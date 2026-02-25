@@ -7,6 +7,7 @@ Uses direct maven-metadata.xml access instead of Search API for reliability.
 
 import urllib.request
 import urllib.error
+import urllib.parse
 import json
 import time
 import re
@@ -102,7 +103,8 @@ class MavenCentral:
         lower = version.lower()
         prerelease_markers = [
             'alpha', 'beta', 'rc', 'cr', 'snapshot', 
-            'dev', 'preview', 'pre', 'milestone', 'm1', 'm2', 'm3'
+            'dev', 'preview', 'pre', 'milestone', 'm1', 'm2', 'm3',
+            '-ea', 'ea+',  # Early Access (e.g., 27-ea+5)
         ]
         return any(marker in lower for marker in prerelease_markers)
 
@@ -194,7 +196,10 @@ class MavenCentral:
             pass
 
     def _fetch_metadata(self, group_id: str, artifact_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch and parse maven-metadata.xml from Maven Central."""
+        """
+        Fetch and parse maven-metadata.xml from Maven Central.
+        Falls back to Search API if metadata.xml not found (404).
+        """
         url = self._build_metadata_url(group_id, artifact_id)
         
         try:
@@ -207,8 +212,58 @@ class MavenCentral:
                 return self._parse_metadata_xml(xml_content)
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return None  # Artifact not found
-            raise
+                # Fallback to Search API
+                return self._fetch_via_search_api(group_id, artifact_id)
+            return None
+        except Exception:
+            return None
+
+    def _fetch_via_search_api(self, group_id: str, artifact_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Fallback: Fetch versions via Maven Central Search API.
+        Used when maven-metadata.xml is not available (e.g., Gradle plugins).
+        """
+        search_url = "https://search.maven.org/solrsearch/select"
+        query = f'g:"{group_id}" AND a:"{artifact_id}"'
+        params = urllib.parse.urlencode({
+            'q': query,
+            'rows': 100,
+            'wt': 'json',
+            'core': 'gav'
+        })
+        url = f"{search_url}?{params}"
+        
+        try:
+            request = urllib.request.Request(url, headers={
+                'User-Agent': 'gradleInit/1.0',
+                'Accept': 'application/json'
+            })
+            with urllib.request.urlopen(request, timeout=10) as response:
+                import json
+                data = json.loads(response.read().decode('utf-8'))
+                docs = data.get('response', {}).get('docs', [])
+                
+                if not docs:
+                    return None
+                
+                # Extract versions from search results
+                versions = [doc.get('v') for doc in docs if doc.get('v')]
+                if not versions:
+                    return None
+                
+                # Sort versions (newest first)
+                sorted_versions = self._sort_versions(versions)
+                
+                # Find latest stable version
+                stable_versions = [v for v in sorted_versions 
+                                   if not self._is_prerelease(v)]
+                latest = stable_versions[0] if stable_versions else sorted_versions[0]
+                
+                return {
+                    'latest': latest,
+                    'release': latest,
+                    'versions': sorted_versions
+                }
         except Exception:
             return None
 
