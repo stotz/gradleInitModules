@@ -53,8 +53,8 @@ class MavenCentral:
         Parse maven-metadata.xml content.
         
         Returns dict with:
-            - latest: latest release version
-            - release: latest release version (same as latest usually)
+            - latest: latest stable (non-prerelease) version
+            - release: release version from metadata (may be prerelease)
             - versions: list of all versions (newest first after sorting)
         """
         try:
@@ -66,11 +66,7 @@ class MavenCentral:
                 'versions': []
             }
             
-            # Get latest/release from metadata
-            latest_elem = root.find('.//latest')
-            if latest_elem is not None and latest_elem.text:
-                result['latest'] = latest_elem.text.strip()
-            
+            # Get release from metadata (informational, may be prerelease)
             release_elem = root.find('.//release')
             if release_elem is not None and release_elem.text:
                 result['release'] = release_elem.text.strip()
@@ -85,14 +81,15 @@ class MavenCentral:
                 # Sort versions (newest first)
                 result['versions'] = self._sort_versions(versions)
             
-            # If no latest specified, use first from sorted versions
-            if not result['latest'] and result['versions']:
-                # Filter out pre-release versions for 'latest'
+            # Always compute 'latest' as the newest stable version
+            # (ignore <latest> element from XML as it often contains prereleases)
+            if result['versions']:
                 stable_versions = [v for v in result['versions'] 
                                    if not self._is_prerelease(v)]
                 if stable_versions:
                     result['latest'] = stable_versions[0]
                 else:
+                    # No stable versions available, use newest overall
                     result['latest'] = result['versions'][0]
             
             return result
