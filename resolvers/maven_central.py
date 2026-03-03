@@ -57,6 +57,7 @@ class MavenCentral:
             - latest: latest stable (non-prerelease) version
             - release: release version from metadata (may be prerelease)
             - versions: list of all versions (newest first after sorting)
+            - last_updated: Unix timestamp of last update (or None)
         """
         try:
             root = ET.fromstring(xml_content)
@@ -64,10 +65,23 @@ class MavenCentral:
             result = {
                 'latest': None,
                 'release': None,
-                'versions': []
+                'versions': [],
+                'last_updated': None
             }
             
             # Get release from metadata (informational, may be prerelease)
+            
+            # Get lastUpdated timestamp (format: yyyyMMddHHmmss in UTC)
+            last_updated_elem = root.find('.//lastUpdated')
+            if last_updated_elem is not None and last_updated_elem.text:
+                try:
+                    from datetime import datetime, timezone
+                    ts_str = last_updated_elem.text.strip()
+                    dt = datetime.strptime(ts_str, '%Y%m%d%H%M%S')
+                    dt = dt.replace(tzinfo=timezone.utc)
+                    result['last_updated'] = dt.timestamp()
+                except (ValueError, TypeError):
+                    pass
             release_elem = root.find('.//release')
             if release_elem is not None and release_elem.text:
                 result['release'] = release_elem.text.strip()
@@ -298,6 +312,52 @@ class MavenCentral:
         if include_prerelease:
             return data.get('versions', [None])[0]
         return data.get('latest')
+
+
+    def get_version_info(self, group_id: str, artifact_id: str,
+                         include_prerelease: bool = False) -> Optional[Dict[str, Any]]:
+        """
+        Get latest version with metadata (including age).
+        
+        Args:
+            group_id: Maven groupId
+            artifact_id: Maven artifactId
+            include_prerelease: If True, include alpha/beta/RC versions
+        
+        Returns:
+            Dict with 'version', 'age_hours' (or None if not available)
+        """
+        # Check cache first
+        cached = self._read_cache(group_id, artifact_id)
+        if not cached:
+            # Fetch from Maven Central
+            data = self._fetch_metadata(group_id, artifact_id)
+            if not data:
+                return None
+            self._write_cache(group_id, artifact_id, data)
+            cached = data
+        
+        # Get version
+        if include_prerelease:
+            version = cached.get('versions', [None])[0]
+        else:
+            version = cached.get('latest')
+        
+        if not version:
+            return None
+        
+        # Calculate age in hours
+        age_hours = None
+        last_updated = cached.get('last_updated')
+        if last_updated:
+            import time
+            age_seconds = time.time() - last_updated
+            age_hours = age_seconds / 3600
+        
+        return {
+            'version': version,
+            'age_hours': age_hours
+        }
 
     def get_versions(self, group_id: str, artifact_id: str, 
                      limit: int = 10,
