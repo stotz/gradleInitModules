@@ -112,15 +112,21 @@ class MavenCentral:
         except ET.ParseError:
             return {'latest': None, 'release': None, 'versions': []}
 
+    # Pre-release qualifier following a delimiter. Anchoring on a delimiter avoids
+    # false positives on stable versions (e.g. 4.0.6, 26.0.1) while matching any
+    # milestone M<number> (not just M1-M3), RC, alpha/beta, snapshot, ea, etc.
+    _PRERELEASE_RE = re.compile(
+        r'(?i)[-_.+](alpha|beta|milestone|preview|snapshot|rc|cr|dev|pre|ea|m\d+)([-_.+0-9]|$)'
+    )
+
     def _is_prerelease(self, version: str) -> bool:
-        """Check if version is a pre-release (alpha, beta, RC, SNAPSHOT, etc.)."""
-        lower = version.lower()
-        prerelease_markers = [
-            'alpha', 'beta', 'rc', 'cr', 'snapshot', 
-            'dev', 'preview', 'pre', 'milestone', 'm1', 'm2', 'm3',
-            '-ea', 'ea+',  # Early Access (e.g., 27-ea+5)
-        ]
-        return any(marker in lower for marker in prerelease_markers)
+        """Check if version is a pre-release (alpha, beta, RC, milestone, SNAPSHOT, etc.).
+
+        Previously this used a fixed substring list with only m1/m2/m3, so newer
+        milestones such as 4.1.0-M4 were treated as stable and could be returned as
+        the latest version. The delimiter-anchored regex matches any M<number>.
+        """
+        return bool(self._PRERELEASE_RE.search(version))
 
     def _parse_version(self, version: str) -> Tuple[List[int], str]:
         """
