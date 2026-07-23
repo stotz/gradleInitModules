@@ -1,0 +1,249 @@
+# ==============================================================================
+# .gitattributes (Repository policy)
+# ==============================================================================
+# This repository works STRICTLY with LF line endings for all text files.
+# Exceptions:
+# - Windows scripts (*.bat, *.cmd, *.ps1, *.psm1) may use CRLF.
+#
+# Why:
+# - Stable diffs and blame across platforms
+# - No CRLF/LF churn in commits
+# - Consistent behavior in CI and on Linux/macOS
+#
+# ------------------------------------------------------------------------------
+# Recommended Git config (run once per machine)
+#
+# Cross-platform / strong LF preference (recommended for this repo):
+#   git config --global core.autocrlf input
+#   git config --global core.safecrlf warn
+#
+# What these do:
+# - core.autocrlf=input
+#   * Checkout: leaves line endings as-is (typically LF)
+#   * Commit:   converts CRLF -> LF (prevents accidental CRLF commits)
+#
+# - core.safecrlf=warn
+#   * Warns if conversion looks suspicious (e.g., mixed endings)
+#
+# NOTE:
+# - Do NOT use "core.autocrlf=true" if you want a strict LF workflow.
+#   It will checkout CRLF for text files on Windows and can re-introduce noise.
+#
+# ------------------------------------------------------------------------------
+# One-time normalization (only needed when introducing/changing EOL policy)
+#
+# If the repository already contains mixed endings, apply the rules once:
+#
+#   git add --renormalize .
+#   git commit -m "Normalize line endings (LF policy)"
+#
+# What it does:
+# - Re-applies these attributes to all tracked files
+# - Converts tracked text files to LF (except Windows scripts listed below)
+# - Leaves binary files untouched
+#
+# After that commit, line endings should remain stable.
+# ==============================================================================
+
+
+# ==============================================================================
+# 1) Global defaults: treat ALL files as text unless explicitly marked binary
+# ==============================================================================
+# Store all text files as LF in the repository.
+* text eol=lf
+
+
+# ==============================================================================
+# 2) Windows scripts: allow / enforce CRLF
+# ==============================================================================
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+*.ps1          text eol=crlf
+*.psm1         text eol=crlf
+
+
+# ==============================================================================
+# 3) Source code: always LF
+# ==============================================================================
+# Kotlin / Java / Gradle / Groovy
+*.kt           text eol=lf
+*.kts          text eol=lf
+*.ktx          text eol=lf
+*.java         text eol=lf
+*.groovy       text eol=lf
+*.gradle       text eol=lf
+*.gradle.kts   text eol=lf
+
+# C / C++ / Rust / Go
+*.c            text eol=lf
+*.h            text eol=lf
+*.cpp          text eol=lf
+*.hpp          text eol=lf
+*.cc           text eol=lf
+*.cxx          text eol=lf
+*.hh           text eol=lf
+*.hxx          text eol=lf
+*.rs           text eol=lf
+*.go           text eol=lf
+
+# Python / Perl / Ruby
+*.py           text eol=lf
+*.pl           text eol=lf
+*.pm           text eol=lf
+*.rb           text eol=lf
+
+# Shell
+*.sh           text eol=lf
+*.bash         text eol=lf
+*.zsh          text eol=lf
+
+
+# ==============================================================================
+# 4) Config / declarative formats: always LF
+# ==============================================================================
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.json         text eol=lf
+*.xml          text eol=lf
+*.xsd          text eol=lf
+*.toml         text eol=lf
+*.ini          text eol=lf
+*.cfg          text eol=lf
+*.conf         text eol=lf
+*.properties   text eol=lf
+*.env          text eol=lf
+*.proto        text eol=lf
+*.idl          text eol=lf
+
+# SQL / Terraform / CMake
+*.sql          text eol=lf
+*.tf           text eol=lf
+*.tfvars       text eol=lf
+*.cmake        text eol=lf
+CMakeLists.txt text eol=lf
+
+
+# ==============================================================================
+# 5) Documentation: always LF
+# ==============================================================================
+*.md           text eol=lf
+*.markdown     text eol=lf
+*.txt          text eol=lf
+*.adoc         text eol=lf
+*.rst          text eol=lf
+
+# PlantUML
+*.puml         text eol=lf
+*.plantuml     text eol=lf
+
+
+# ==============================================================================
+# 6) Web files: always LF
+# ==============================================================================
+*.html         text eol=lf
+*.htm          text eol=lf
+*.css          text eol=lf
+*.scss         text eol=lf
+*.less         text eol=lf
+*.js           text eol=lf
+*.jsx          text eol=lf
+*.ts           text eol=lf
+*.tsx          text eol=lf
+*.vue          text eol=lf
+*.svelte       text eol=lf
+
+
+# ==============================================================================
+# 7) Makefiles: LF (recommended)
+# ==============================================================================
+Makefile       text eol=lf
+GNUmakefile    text eol=lf
+makefile       text eol=lf
+
+
+# ==============================================================================
+# 8) Binary files: never treat as text, never convert, never EOL-normalize
+# ==============================================================================
+# Archives / packages
+*.jar          binary
+*.war          binary
+*.ear          binary
+*.zip          binary
+*.tar          binary
+*.gz           binary
+*.tgz          binary
+*.bz2          binary
+*.xz           binary
+*.7z           binary
+*.rar          binary
+
+# Documents
+*.pdf          binary
+
+# Images
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.bmp          binary
+*.webp         binary
+*.ico          binary
+*.svgz         binary
+
+# Audio / video
+*.mp3          binary
+*.wav          binary
+*.flac         binary
+*.ogg          binary
+*.m4a          binary
+*.mp4          binary
+*.mov          binary
+*.mkv          binary
+*.avi          binary
+
+# Native binaries / libraries
+*.exe          binary
+*.dll          binary
+*.so           binary
+*.dylib        binary
+*.bin          binary
+*.a            binary
+*.lib          binary
+*.o            binary
+*.obj          binary
+*.class        binary
+
+# Fonts
+*.ttf          binary
+*.otf          binary
+*.woff         binary
+*.woff2        binary
+
+# Databases / data blobs
+*.db           binary
+*.sqlite       binary
+*.sqlite3      binary
+
+# Certificates / keystores (treat as binary to avoid accidental mangling)
+*.p12          binary
+*.pfx          binary
+*.jks          binary
+*.keystore     binary
+
+# NASA SPICE kernels (always binary)
+*.bsp          binary
+*.bc           binary
+*.bpc          binary
+*.tf           text eol=lf
+*.tls          text eol=lf
+*.tsc          text eol=lf
+*.tpc          text eol=lf
+*.bdb          binary
+
+
+# ==============================================================================
+# 9) Optional: generated/minified artifacts (reduce diff noise if committed)
+# ==============================================================================
+# *.min.js      binary
+# *.map         binary
+# ==============================================================================
